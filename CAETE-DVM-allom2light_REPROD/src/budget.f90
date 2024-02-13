@@ -356,15 +356,20 @@ contains
 
          evap(p) = penman(p0,temp,rh,available_energy(temp),rc2(p)) !Actual evapotranspiration (evap, mm/day)
          
+         !===================================================================================
+         !   REPRODUCTION (call SEED PRODUCTION MODULE; SEED GERMINATION; UPDATE SEEDBAK)
+             ! (Bruna Soica)
+         !===================================================================================
+
          if (24.0 <= temp .and. temp <= 33.0 .and. 60.0 <= prec .and. prec <= 200.0 .and. nppa(p) > 0.0) then
 
-            call repro(temp, nppa(p), height_aux(p), seed_mass(p), n_seed(p)) ! ---> Usar height_aux(ri) ou height_aux(p) ???
+            call repro(temp, nppa(p), height_aux(ri), seed_mass(p), n_seed(p)) ! ---> Usar height_aux(ri) ou height_aux(p) ???
             seed_bank(p) = seed_bank(p) + n_seed(p) !!UPDATE SEEDBANK
 
          endif
 
          if (23.0 <= temp .and. temp <= 30.0 .and. seed_bank(p)>0) then  
-            
+
             germinated_seeds(p) = seed_bank(p)*0.5
             seed_bank(p) = seed_bank(p) - germinated_seeds(p) !!UPDATE SEEDBANK
             
@@ -376,6 +381,12 @@ contains
             seed_bank(p) = seed_bank(p)*0.5
 
          endif
+
+         !!UPDATE PLS C POOLS
+
+         !===================================================================================
+         !   END REPRODUCTION 
+         !===================================================================================
 
          ! Check if the carbon deficit can be compensated by stored carbon
          carbon_in_storage = sto_budg(1, ri)

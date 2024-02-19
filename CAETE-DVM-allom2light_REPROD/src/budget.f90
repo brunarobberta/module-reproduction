@@ -153,6 +153,10 @@ contains
       real(r_4),dimension(:),allocatable :: seed_bank !NEW ***************
       real(r_4),dimension(:),allocatable :: n_seed    !NEW ***************
       real(r_4),dimension(:),allocatable :: germinated_seeds    !NEW ***************
+      real(r_4),dimension(:),allocatable :: total_C_pls    !NEW ***************
+      real(r_4),dimension(:),allocatable :: pct_leaf_C    !NEW ***************
+      real(r_4),dimension(:),allocatable :: pct_wood_C    !NEW ***************
+      real(r_4),dimension(:),allocatable :: pct_froot_C    !NEW ***************
 
       real(r_8),dimension(:),allocatable :: cl1_int
       real(r_8),dimension(:),allocatable :: cf1_int
@@ -307,6 +311,10 @@ contains
       allocate(seed_bank(nlen)) !NEW ***************
       allocate(n_seed(nlen)) !NEW ***************
       allocate(germinated_seeds(nlen)) !NEW ***************
+      allocate(total_C_pls(nlen)) !NEW ***************
+      allocate(pct_leaf_C(nlen)) !NEW ***************
+      allocate(pct_wood_C(nlen)) !NEW ***************
+      allocate(pct_froot_C(nlen)) !NEW ***************
 
       !     Maximum evapotranspiration   (emax)
       !     =================================
@@ -356,33 +364,42 @@ contains
 
          evap(p) = penman(p0,temp,rh,available_energy(temp),rc2(p)) !Actual evapotranspiration (evap, mm/day)
          
-         !===================================================================================
-         !   REPRODUCTION (call SEED PRODUCTION MODULE; SEED GERMINATION; UPDATE SEEDBAK)
-             ! (Bruna Soica)
-         !===================================================================================
+         !==============================================================================================================================
+         !   REPRODUCTION OF TREES [call SEED PRODUCTION MODULE; SEED GERMINATION; UPDATE BIOMASS POOLS; UPDATE SEEDBAK]
+         !   (Bruna R. Soica)
+         !==============================================================================================================================
 
          if (24.0 <= temp .and. temp <= 33.0 .and. 60.0 <= prec .and. prec <= 200.0 .and. nppa(p) > 0.0) then
 
-            call repro(temp, nppa(p), height_aux(ri), seed_mass(p), n_seed(p)) ! ---> Usar height_aux(ri) ou height_aux(p) ???
-            seed_bank(p) = seed_bank(p) + n_seed(p) !!UPDATE SEEDBANK
+            call repro(temp, nppa(p), height_aux(ri), seed_mass(ri), n_seed(ri)) ! ---> Usar height_aux(ri) ou height_aux(p) ???
+            seed_bank(ri) = seed_bank(ri) + n_seed(ri) !!UPDATE SEEDBANK
 
          endif
 
-         if (23.0 <= temp .and. temp <= 30.0 .and. seed_bank(p)>0) then  
+         if (23.0 <= temp .and. temp <= 30.0 .and. seed_bank(ri)>0) then  
 
-            germinated_seeds(p) = seed_bank(p)*0.5
-            seed_bank(p) = seed_bank(p) - germinated_seeds(p) !!UPDATE SEEDBANK
+            germinated_seeds(ri) = seed_bank(ri)*0.5
+            seed_bank(ri) = seed_bank(ri) - germinated_seeds(ri) !!UPDATE SEEDBANK
+            !!UPDATE PLS C POOLS:
+            total_C_pls(ri) = cl1_pft(ri) + ca1_pft(ri) + cf1_pft(ri) !calculates total PLS biomass before germination 
+            pct_leaf_C(ri) = cl1_pft(ri) / total_C_pls(ri) !calculates %C in leaf pool before germination
+            pct_wood_C(ri) = ca1_pft(ri) / total_C_pls(ri) !calculates %C in wood pool before germination 
+            pct_froot_C(ri) = cf1_pft(ri) / total_C_pls(ri) !calculates %C in froot pool before germination
+         
+            total_C_pls(ri) = total_C_pls(ri) * germinated_seeds(ri) !Increment total PLS biomass based on the number of germinated seeds (already adult PLS, no seedling or sapling phases)
+
+            cl1_pft(ri) = pct_leaf_C(ri) * total_C_pls(ri) !re-allocate new PLS biomass in leaf pool
+            ca1_pft(ri) = pct_wood_C(ri) * total_C_pls(ri) !re-allocate new PLS biomass in wood pool
+            cf1_pft(ri) = pct_froot_C(ri) * total_C_pls(ri) !re-allocate new PLS biomass in root pool 
             
          endif
          
          !! ANNUAL SEEDBANK DECAY
          if (n_days .eq. 365) then
 
-            seed_bank(p) = seed_bank(p)*0.5
+            seed_bank(ri) = seed_bank(ri)*0.5
 
          endif
-
-         !!UPDATE PLS C POOLS
 
          !===================================================================================
          !   END REPRODUCTION 
